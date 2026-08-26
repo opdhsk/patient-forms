@@ -17,7 +17,9 @@
         .radio-group { display: flex; gap: 20px; align-items: center; padding-top: 5px; }
         .radio-group label { font-weight: normal; font-size: 14px; cursor: pointer; display: flex; align-items: center; gap: 5px; }
         hr.divider { border: 0; height: 1px; background: #ddd; margin: 25px 0; }
-        button.print-btn { background-color: #007aff; color: white; border: none; padding: 12px 24px; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer; width: 100%; margin-top: 15px; }
+        .btn-row { display: flex; gap: 12px; margin-top: 15px; }
+        button.print-btn { background-color: #007aff; color: white; border: none; padding: 12px 24px; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer; flex: 1; }
+        button.clear-btn { background-color: #dc2626; color: white; border: none; padding: 12px 24px; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer; flex: 1; }
 
         /* Date picker with custom calendar popup */
         .date-input-wrapper { position: relative; display: flex; align-items: center; }
@@ -308,7 +310,10 @@
             </div>
         </div>
 
-        <button class="print-btn" onclick="printDocument()">Print A4 Form</button>
+        <div class="btn-row">
+            <button class="print-btn" onclick="printDocument()">Print A4 Form</button>
+            <button class="clear-btn" onclick="clearFormData()">Clear Form &amp; Delete Data</button>
+        </div>
     </div>
 
     <!-- Printable A4 Template — Page 1: Patient's Biodata Sheet -->
@@ -609,6 +614,31 @@
 
             // Trigger system printing dialog
             window.print();
+        }
+
+        // Clears every field in the on-screen form back to its original state
+        function clearFormData() {
+            if (!confirm('This will permanently delete all patient data entered in this form. Continue?')) {
+                return;
+            }
+
+            const panel = document.querySelector('.no-print');
+
+            panel.querySelectorAll('input[type="text"], textarea').forEach(el => {
+                el.value = el.defaultValue; // restores to blank / original placeholder state
+            });
+
+            panel.querySelectorAll('select').forEach(sel => {
+                Array.from(sel.options).forEach(opt => {
+                    opt.selected = opt.defaultSelected;
+                });
+            });
+
+            panel.querySelectorAll('input[type="radio"], input[type="checkbox"]').forEach(el => {
+                el.checked = el.defaultChecked; // restores the original "checked" default (e.g. No)
+            });
+
+            alert('Form cleared. Patient data has been deleted.');
         }
 
         // Register Service Worker for PWA functionality
