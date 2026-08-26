@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Psychiatric Case Record</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#ffffff">
+    <style>
+        /* Screen Form Styling */
+        body { font-family: Arial, sans-serif; margin: 20px; background-color: #f4f4f9; }
+        .no-print { max-width: 800px; margin: 0 auto 20px auto; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px; }
+        .full-width { grid-column: 1 / -1; }
+        label { font-weight: bold; font-size: 13px; display: block; margin-bottom: 5px; }
+        input[type="text"], select { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; background-color: #fff; font-size: 14px; }
+        .radio-group { display: flex; gap: 20px; align-items: center; padding-top: 5px; }
+        .radio-group label { font-weight: normal; font-size: 14px; cursor: pointer; display: flex; align-items: center; gap: 5px; }
+        hr.divider { border: 0; height: 1px; background: #ddd; margin: 25px 0; }
+        button.print-btn { background-color: #007aff; color: white; border: none; padding: 12px 24px; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer; width: 100%; margin-top: 15px; }
+
+        /* Date picker with custom calendar popup */
+        .date-input-wrapper { position: relative; display: flex; align-items: center; }
+        .date-input-wrapper input[type="text"] { flex: 1; padding-right: 34px; }
+        .calendar-btn { position: absolute; right: 4px; background: none; border: none; cursor: pointer; font-size: 16px; padding: 4px; }
+        .calendar-popup { position: absolute; top: 100%; right: 0; margin-top: 4px; z-index: 1000; background: #fff; border: 1px solid #ccc; border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); padding: 10px; width: 240px; display: none; font-size: 13px; }
+        .calendar-popup.open { display: block; }
+        .calendar-popup-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-weight: bold; }
+        .calendar-popup-header button { background: none; border: none; cursor: pointer; font-size: 14px; padding: 2px 6px; }
+        .calendar-popup-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; text-align: center; }
+        .calendar-popup-grid span { padding: 4px 0; color: #888; font-weight: bold; font-size: 11px; }
+        .calendar-popup-grid button { background: none; border: none; padding: 6px 0; cursor: pointer; border-radius: 4px; font-size: 13px; }
+        .calendar-popup-grid button:hover { background: #007aff; color: #fff; }
+
+        /* Printable Document Layout (Hidden on Screen) */
+        #print-area { display: none; }
+        #print-area-2 { display: none; }
+        #print-area-3 { display: none; }
+        .first-visit-stamp { text-align: center; margin-top: 12px; }
+
+        /* Balanced Single-Page A4 Print Layout */
+        @media print {
+            @page { 
+                size: A4 portrait; 
+                margin: 6mm 10mm 4mm 10mm;
+            }
+            html, body {
+                height: 98%; 
+                background: transparent !important; 
+                margin: 0 !important; 
+                padding: 0 !important; 
+            }
+            .no-print { display: none !important; }
+            #print-area { 
+                display: block !important; 
+                font-family: Arial, sans-serif; 
+                font-size: 14px; 
+                line-height: 1.5; 
+                color: #000; 
+            }
+            #print-area-2 {
+                display: block;
+                page-break-before: always;
+                font-family: Arial, sans-serif;
+                font-size: 14px;
+                line-height: 1.5;
+                color: #000;
+            }
+            #print-area-2.hidden-print { display: none !important; }
+            #print-area-3 {
+                display: block;
+                page-break-before: always;
+                font-family: Arial, sans-serif;
+                font-size: 14px;
+                line-height: 1.5;
+                color: #000;
+            }
+            #print-area-3.hidden-print { display: none !important; }
+            .doc-code { text-align: right; font-size: 11px; margin-bottom: 12px; }
+            .header { text-align: center; margin-bottom: 20px; }
+            .header h2 { margin: 0; font-size: 19px; letter-spacing: 1px; }
+            .header h3 { margin: 4px 0 0 0; font-weight: normal; font-size: 15px; }
+            .field-row { display: flex; align-items: flex-end; margin-bottom: 18px; width: 100%; }
+            .field-label { white-space: nowrap; padding-right: 5px; }
+            .field-value { border-bottom: 1px solid #000; flex-grow: 1; padding-left: 8px; font-weight: bold; min-height: 20px; }
+            .checkbox-box { border: 1px solid #000; min-width: 110px; height: 24px; display: inline-block; text-align: center; line-height: 24px; font-weight: bold; margin-left: 8px; margin-right: 20px; padding: 0 5px; }
+            .section-spacer { margin-top: 32px; }
+            .section-spacer-lg { margin-top: 60px; }
+            .stamps-container { display: flex; justify-content: space-between; align-items: flex-start; margin-top: 40px; }
+            .stamp-box { border: 2px solid #000; width: 48%; height: 100px; padding: 8px; font-size: 12px; box-sizing: border-box; line-height: 1.9; }
+            .stamp-box-admission { height: 150px; }
+            .bks-section-title { font-weight: bold; text-decoration: underline; margin-bottom: 10px; }
+            .bks-vital-title { text-align: center; font-weight: bold; margin: 15px 0; }
+            .bks-table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 12px; }
+            .bks-table th, .bks-table td { border: 1px solid #000; padding: 6px; text-align: left; }
+            .bks-table td { height: 90px; vertical-align: top; }
+            .sambungan-table { width: 100%; border-collapse: collapse; margin-top: 25px; font-size: 12px; }
+            .sambungan-table th { border: 1px solid #000; padding: 6px; text-align: left; font-weight: bold; }
+            .sambungan-table td { border: 1px solid #000; padding: 6px; text-align: left; height: 45px; vertical-align: top; }
+            .sambungan-table td.proc-label { width: 65%; }
+            .sambungan-table td.code-col { width: 35%; }
+            .sambungan-footer { display: flex; justify-content: space-between; margin-top: 20px; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- On-Screen Input Form -->
+    <div class="no-print">
+        <div style="text-align: center; margin-bottom: 20px;">
+            <h2 style="margin: 0; font-size: 20px;">HOSPITAL SENTOSA KUCHING</h2>
+            <h3 style="margin: 5px 0 0 0; font-size: 16px; color: #555;">PATIENT BIODATA FORM</h3>
+        </div>
+
+        <div class="form-grid">
+            <div class="full-width">
+                <label>Name</label>
+                <input type="text" id="in_name" placeholder="Enter full patient name">
+            </div>
+            <div><label>I/C No.</label><input type="text" id="in_icNo"></div>
+            <div>
+                <label>Date of Birth</label>
+                <div class="date-input-wrapper">
+                    <input type="text" id="in_dob" placeholder="e.g. 1 January 1990">
+                    <button type="button" class="calendar-btn" onclick="toggleCalendar('in_dob', this)">📅</button>
+                </div>
+            </div>
+
+            <div>
+                <label>Sex</label>
+                <div class="radio-group">
+                    <label><input type="radio" name="sex_option" value="Male" checked> Male</label>
+                    <label><input type="radio" name="sex_option" value="Female"> Female</label>
+                </div>
+            </div>
+
+            <div>
+                <label>Race</label>
+                <select id="in_race">
+                    <option value="">-- Select --</option>
+                    <option value="Malay">Malay</option>
+                    <option value="Iban">Iban</option>
+                    <option value="Bidayuh">Bidayuh</option>
+                    <option value="Melanau">Melanau</option>
+                    <option value="Other Sarawak Dayak">Other Sarawak Dayak</option>
+                    <option value="Chinese">Chinese</option>
+                    <option value="Indian">Indian</option>
+                    <option value="Jewish">Jewish</option>
+                    <option value="Kadazan">Kadazan</option>
+                    <option value="Dusun">Dusun</option>
+                    <option value="Bajau">Bajau</option>
+                    <option value="Other Sabahan Natives">Other Sabahan Natives</option>
+                    <option value="Other Malaysian">Other Malaysian</option>
+                    <option value="Non-Malaysian">Non-Malaysian</option>
+                </select>
+            </div>
+
+            <div>
+                <label>Religion</label>
+                <select id="in_religion">
+                    <option value="">-- Select --</option>
+                    <option value="Islam">Islam</option>
+                    <option value="Christianity">Christianity</option>
+                    <option value="Judaism">Judaism</option>
+                    <option value="Buddhism">Buddhism</option>
+                    <option value="Taoism">Taoism</option>
+                    <option value="Hinduism">Hinduism</option>
+                    <option value="Sikhism">Sikhism</option>
+                    <option value="Bahai">Bahai</option>
+                    <option value="Pagan">Pagan</option>
+                    <option value="Atheist">Atheist</option>
+                </select>
+            </div>
+
+            <div>
+                <label>Marital Status</label>
+                <select id="in_maritalStatus">
+                    <option value="">-- Select --</option>
+                    <option value="Single">Single</option>
+                    <option value="Married">Married</option>
+                    <option value="Divorced">Divorced</option>
+                    <option value="Widow">Widow</option>
+                </select>
+            </div>
+
+            <div><label>Occupation</label><input type="text" id="in_occupation"></div>
+            <div><label>No. Tel.</label><input type="text" id="in_phoneNo"></div>
+
+            <div class="full-width">
+                <label>Present Address</label>
+                <input type="text" id="in_presentAddress" placeholder="Enter full present address">
+            </div>
+        </div>
+
+        <hr class="divider">
+
+        <h3>Next of Kin</h3>
+        <div class="form-grid">
+            <div class="full-width">
+                <label>Name of Next of Kin</label>
+                <input type="text" id="in_nokName" placeholder="Enter full name of next of kin">
+            </div>
+            <div><label>NRIC No.</label><input type="text" id="in_nokNric"></div>
+
+            <div>
+                <label>Relationship</label>
+                <select id="in_nokRelationship">
+                    <option value="">-- Select --</option>
+                    <option value="Father">Father</option>
+                    <option value="Mother">Mother</option>
+                    <option value="Son">Son</option>
+                    <option value="Daughter">Daughter</option>
+                    <option value="Husband">Husband</option>
+                    <option value="Wife">Wife</option>
+                    <option value="Elder brother">Elder brother</option>
+                    <option value="Younger brother">Younger brother</option>
+                    <option value="Elder Sister">Elder Sister</option>
+                    <option value="Younger sister">Younger sister</option>
+                    <option value="Nephew">Nephew</option>
+                    <option value="Niece">Niece</option>
+                    <option value="Grandson">Grandson</option>
+                    <option value="Grand daughter">Grand daughter</option>
+                    <option value="Cousin">Cousin</option>
+                    <option value="Care giver">Care giver</option>
+                    <option value="Other">Other</option>
+                </select>
+            </div>
+
+            <div><label>Occupation</label><input type="text" id="in_nokOccupation"></div>
+            <div><label>No. Tel</label><input type="text" id="in_nokPhoneNo"></div>
+
+            <div class="full-width">
+                <label>Address</label>
+                <input type="text" id="in_nokAddress" placeholder="Enter full address of next of kin">
+            </div>
+        </div>
+
+        <hr class="divider">
+
+        <h3>Admission Details</h3>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+            <div>
+                <label>Voluntary</label>
+                <select id="in_voluntary">
+                    <option value="">-- Select --</option>
+                    <option value="Form 1">Form 1</option>
+                    <option value="Other">Other</option>
+                </select>
+            </div>
+
+            <div>
+                <label>Compulsory</label>
+                <select id="in_compulsory">
+                    <option value="">-- Select --</option>
+                    <option value="Form 3 & Form 4">Form 3 & Form 4</option>
+                    <option value="Form 3, 4, 6 & 12">Form 3, 4, 6 & 12</option>
+                    <option value="Form 5">Form 5</option>
+                    <option value="Section 342">Section 342</option>
+                </select>
+            </div>
+
+            <div><label>Number of Previous Admissions</label><input type="text" id="in_previousAdmissions"></div>
+            <div><label>HSK Registration Number</label><input type="text" id="in_hskRegNumber"></div>
+        </div>
+
+        <h3>Admission Box Details</h3>
+        <div class="form-grid">
+            <div>
+                <label>Admission Date</label>
+                <div class="date-input-wrapper">
+                    <input type="text" id="in_adminDate" placeholder="e.g. 22 August 2026">
+                    <button type="button" class="calendar-btn" onclick="toggleCalendar('in_adminDate', this)">📅</button>
+                </div>
+            </div>
+            <div>
+                <label>Admission Time</label>
+                <input type="text" id="in_adminTime" placeholder="e.g. 10:30 AM">
+            </div>
+            <div class="full-width">
+                <label>Diagnosis</label>
+                <input type="text" id="in_diagnosis" placeholder="Enter diagnosis">
+            </div>
+        </div>
+
+        <hr class="divider">
+
+        <div class="form-grid">
+            <div class="full-width">
+                <label>New Case?</label>
+                <div class="radio-group">
+                    <label><input type="radio" name="new_case_option" value="Yes"> Yes</label>
+                    <label><input type="radio" name="new_case_option" value="No" checked> No</label>
+                </div>
+            </div>
+            <div class="full-width">
+                <label>Planned For Admission?</label>
+                <div class="radio-group">
+                    <label><input type="radio" name="planned_admission_option" value="Yes"> Yes</label>
+                    <label><input type="radio" name="planned_admission_option" value="No" checked> No</label>
+                </div>
+            </div>
+            <div class="full-width">
+                <label>Print Borang Kemasukan Sementara?</label>
+                <div class="radio-group">
+                    <label><input type="radio" name="print_bks_option" value="Yes"> Yes</label>
+                    <label><input type="radio" name="print_bks_option" value="No" checked> No</label>
+                </div>
+            </div>
+        </div>
+
+        <button class="print-btn" onclick="printDocument()">Print A4 Form</button>
+    </div>
+
+    <!-- Printable A4 Template — Page 1: Patient's Biodata Sheet -->
+    <div id="print-area">
+        <div class="doc-code">HSK/OPD/2010/05</div>
+        <div class="header">
+            <h2>PSYCHIATRIC CASE RECORD</h2>
+            <h3>Patient's Biodata Sheet</h3>
+        </div>
+        
+        <div class="field-row"><span class="field-label">Name:</span><div class="field-value" id="out_name"></div><span class="field-label" style="padding-left:15px;">I/C No.:</span><div class="field-value" id="out_icNo"></div></div>
+        <div class="field-row"><span class="field-label">Date of Birth:</span><div class="field-value" id="out_dob"></div><span class="field-label" style="padding-left:15px;">Sex:</span><div class="field-value" id="out_sex"></div><span class="field-label" style="padding-left:15px;">Race:</span><div class="field-value" id="out_race"></div></div>
+        <div class="field-row"><span class="field-label">Religion:</span><div class="field-value" id="out_religion"></div><span class="field-label" style="padding-left:15px;">Marital Status:</span><div class="field-value" id="out_maritalStatus"></div></div>
+        <div class="field-row"><span class="field-label">Occupation:</span><div class="field-value" id="out_occupation"></div></div>
+        <div class="field-row"><span class="field-label">Present Address:</span><div class="field-value" id="out_presentAddress"></div></div>
+        <div class="field-row"><div class="field-value"></div><span class="field-label" style="padding-left:15px;">No. Tel.:</span><div class="field-value" id="out_phoneNo"></div></div>
+        
+        <div class="section-spacer"></div>
+        
+        <div class="field-row"><span class="field-label">Name of Next of Kin:</span><div class="field-value" id="out_nokName"></div><span class="field-label" style="padding-left:15px;">NRIC No. :</span><div class="field-value" id="out_nokNric"></div></div>
+        <div class="field-row"><span class="field-label">Relationship:</span><div class="field-value" id="out_nokRelationship"></div><span class="field-label" style="padding-left:15px;">Occupation:</span><div class="field-value" id="out_nokOccupation"></div></div>
+        <div class="field-row"><span class="field-label">Address:</span><div class="field-value" id="out_nokAddress"></div></div>
+        <div class="field-row"><div class="field-value"></div><span class="field-label" style="padding-left:15px;">No. Tel:</span><div class="field-value" id="out_nokPhoneNo"></div></div>
+        
+        <div class="section-spacer-lg"></div>
+        
+        <div class="field-row" style="align-items: center;">
+            <span class="field-label">Admission Status:</span>
+            <span style="margin-left: 20px;">Voluntary:</span><div class="checkbox-box" id="out_voluntary"></div>
+            <span>Compulsory:</span><div class="checkbox-box" id="out_compulsory"></div>
+        </div>
+        <div class="section-spacer-lg"></div>
+        <div class="field-row"><span class="field-label">Number of Previous Admission (If any):</span><div class="field-value" id="out_previousAdmissions"></div></div>
+        <div class="field-row"><span class="field-label">HSK Registration Number (If any):</span><div class="field-value" id="out_hskRegNumber"></div></div>
+        
+        <div class="stamps-container">
+            <div class="stamp-box stamp-box-admission">
+                <strong>ADMISSION</strong><br>
+                Reg. No: <span id="out_adminRegNo">.....................................</span><br>
+                Admission No: <span id="out_admissionNumber">.....................................</span><br>
+                Date: <span id="out_adminDate">..........................................</span><br>
+                Time: <span id="out_adminTime">..........................................</span>
+            </div>
+            <div class="stamp-box">
+                <strong>DISCHARGE</strong><br>
+                Date: ..........................................<br>
+                Time: ..........................................
+            </div>
+        </div>
+
+  <div id="out_firstVisitStamp" class="first-visit-stamp" style="display:none;">
+    <img src="new-case-stamp.png" width="85" height="85" alt="New Case Stamp">
+</div>
+    </div>
+
+    <!-- Printable A4 Template — Page 2: SAMBUNGAN (conditional) -->
+    <div id="print-area-2">
+        <div class="doc-code">
+            SAMBUNGAN (PER-PD 301)<br>
+            (Pin. 2/2009)
+        </div>
+        <div class="section-spacer"></div>
+        <div class="field-row"><span class="field-label">NAMA (HURUF BESAR):</span><div class="field-value" id="out_nameUpper"></div></div>
+        <div class="field-row"><span class="field-label">NOMBOR KAD PENGENALAN:</span><div class="field-value" id="out_icNoPage2"></div></div>
+
+        <table class="sambungan-table">
+            <tr>
+                <th class="proc-label">29. PEMBEDAHAN PROSEDUR</th>
+                <th class="code-col">32. NOMBOR KOD (ICD9CM)</th>
+            </tr>
+            <tr><td class="proc-label">v) PEMBEDAHAN/PROSEDUR LAIN:</td><td class="code-col"></td></tr>
+            <tr><td class="proc-label">vi) PEMBEDAHAN/PROSEDUR LAIN:</td><td class="code-col"></td></tr>
+            <tr><td class="proc-label">vii) PEMBEDAHAN/PROSEDUR LAIN:</td><td class="code-col"></td></tr>
+            <tr><td class="proc-label">viii) PEMBEDAHAN/PROSEDUR LAIN:</td><td class="code-col"></td></tr>
+            <tr><td class="proc-label">ix) PEMBEDAHAN/PROSEDUR LAIN:</td><td class="code-col"></td></tr>
+            <tr><td class="proc-label">x) PEMBEDAHAN/PROSEDUR LAIN:</td><td class="code-col"></td></tr>
+            <tr><td class="proc-label">xi) PEMBEDAHAN/PROSEDUR LAIN:</td><td class="code-col"></td></tr>
+            <tr><td class="proc-label">xii) PEMBEDAHAN/PROSEDUR LAIN:</td><td class="code-col"></td></tr>
+            <tr><td class="proc-label">xiii) PEMBEDAHAN/PROSEDUR LAIN:</td><td class="code-col"></td></tr>
+        </table>
+
+        <div class="sambungan-footer">
+            <span>NAMA PEGAWAI PERUBATAN:</span>
+            <span>TANDATANGAN, TARIKH &amp; COP JAWATAN:</span>
+        </div>
+    </div>
+
+    <!-- Printable A4 Template — Page 3: Borang Kemasukan Sementara (conditional) -->
+    <div id="print-area-3">
+        <div class="doc-code">HSK/OPD/2020</div>
+        <div class="header">
+            <h2>PSYCHIATRIC CASE REKOD</h2>
+            <h3>Patient's Biodata Sheet</h3>
+        </div>
+
+        <div class="field-row"><span class="field-label">Name:</span><div class="field-value" id="out3_name"></div><span class="field-label" style="padding-left:15px;">I/C No:</span><div class="field-value" id="out3_icNo"></div></div>
+        <div class="field-row"><span class="field-label">Date Of Birth:</span><div class="field-value" id="out3_dob"></div><span class="field-label" style="padding-left:15px;">Race:</span><div class="field-value" id="out3_race"></div></div>
+        <div class="field-row"><span class="field-label">Religion:</span><div class="field-value" id="out3_religion"></div><span class="field-label" style="padding-left:15px;">Sex:</span><div class="field-value" id="out3_sex"></div></div>
+        <div class="field-row"><span class="field-label">Occupation:</span><div class="field-value" id="out3_occupation"></div><span class="field-label" style="padding-left:15px;">Marital Status:</span><div class="field-value" id="out3_maritalStatus"></div></div>
+        <div class="field-row"><span class="field-label">Present Address:</span><div class="field-value" id="out3_presentAddress"></div></div>
+        <div class="field-row"><div class="field-value">&nbsp;</div></div>
+        <div class="field-row"><div class="field-value">&nbsp;</div></div>
+
+        <div class="section-spacer"></div>
+
+        <div class="field-row"><span class="field-label">Name Of Next Of Kin:</span><div class="field-value" id="out3_nokName"></div><span class="field-label" style="padding-left:15px;">NRIC No:</span><div class="field-value" id="out3_nokNric"></div></div>
+        <div class="field-row"><span class="field-label">Relationship:</span><div class="field-value" id="out3_nokRelationship"></div><span class="field-label" style="padding-left:15px;">Occupation:</span><div class="field-value" id="out3_nokOccupation"></div></div>
+        <div class="field-row"><span class="field-label">Present Address:</span><div class="field-value" id="out3_nokAddress"></div></div>
+        <div class="field-row"><div class="field-value">&nbsp;</div></div>
+        <div class="field-row"><div class="field-value">&nbsp;</div></div>
+
+        <div class="section-spacer"></div>
+
+        <div class="field-row" style="align-items: center;">
+            <span class="field-label">Admission Status:</span>
+            <span style="margin-left: 20px;">Voluntary:</span><div class="checkbox-box" id="out3_voluntary"></div>
+            <span>Compulsory:</span><div class="checkbox-box" id="out3_compulsory"></div>
+        </div>
+
+        <div class="field-row"><span class="field-label">Number of Admission:</span><div class="field-value" id="out3_admissionNumber"></div></div>
+
+        <div class="section-spacer"></div>
+
+        <div class="bks-section-title">TREATMENT AT OPD PRIOR TO ADMISSION</div>
+
+        <div class="field-row"><span class="field-label">DIAGNOSIS:</span><div class="field-value" id="out3_diagnosis"></div></div>
+
+        <div class="bks-vital-title">VITAL SIGN</div>
+        <div class="field-row">
+            <span class="field-label">Temperature:</span><div class="field-value" style="flex-grow:0.4;"></div><span class="field-label" style="padding-left:5px;">&deg;C</span>
+            <span class="field-label" style="padding-left:15px;">Blood Pressure:</span><div class="field-value" style="flex-grow:0.4;"></div><span class="field-label" style="padding-left:5px;">mmhg</span>
+            <span class="field-label" style="padding-left:15px;">Pulse Rate:</span><div class="field-value" style="flex-grow:0.4;"></div><span class="field-label" style="padding-left:5px;">/min</span>
+        </div>
+
+        <table class="bks-table">
+            <tr>
+                <th style="width:15%;">TIME</th>
+                <th>TREATMENT (e.g: Acute Regime)</th>
+                <th style="width:18%;">Ordered By</th>
+                <th style="width:18%;">Given By</th>
+            </tr>
+            <tr>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+            </tr>
+        </table>
+
+        <div class="field-row" style="margin-top: 30px;"><span class="field-label">Prepared By:</span><div class="field-value"></div><span class="field-label" style="padding-left:15px;">Received By:</span><div class="field-value"></div></div>
+    </div>
+
+    <script>
+        let currentCalendarField = null;
+        let calendarViewDate = new Date();
+
+        function toggleCalendar(fieldId, btnEl) {
+            const existing = document.getElementById('calendar-popup');
+            if (existing && currentCalendarField === fieldId && existing.classList.contains('open')) {
+                existing.classList.remove('open');
+                currentCalendarField = null;
+                return;
+            }
+            currentCalendarField = fieldId;
+            const textInput = document.getElementById(fieldId);
+            const parsed = new Date(textInput.value);
+            calendarViewDate = isNaN(parsed) ? new Date() : parsed;
+            renderCalendar(btnEl.parentElement);
+        }
+
+        function renderCalendar(wrapperEl) {
+            let popup = document.getElementById('calendar-popup');
+            if (!popup) {
+                popup = document.createElement('div');
+                popup.id = 'calendar-popup';
+                popup.className = 'calendar-popup';
+                document.body.appendChild(popup);
+            }
+            wrapperEl.appendChild(popup);
+
+            const year = calendarViewDate.getFullYear();
+            const month = calendarViewDate.getMonth();
+            const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+            const firstDay = new Date(year, month, 1);
+            let startWeekday = (firstDay.getDay() + 6) % 7;
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+            let html = '<div class="calendar-popup-header">' +
+                '<button type="button" onclick="changeCalendarMonth(-1)">&#9664;</button>' +
+                '<span>' + monthNames[month] + ' ' + year + '</span>' +
+                '<button type="button" onclick="changeCalendarMonth(1)">&#9654;</button></div>' +
+                '<div class="calendar-popup-grid">' +
+                '<span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span><span>Su</span>';
+
+            for (let i = 0; i < startWeekday; i++) { html += '<span></span>'; }
+            for (let d = 1; d <= daysInMonth; d++) { html += '<button type="button" onclick="selectCalendarDate(' + d + ')">' + d + '</button>'; }
+            html += '</div>';
+            popup.innerHTML = html;
+            popup.classList.add('open');
+        }
+
+        function changeCalendarMonth(delta) {
+            calendarViewDate.setMonth(calendarViewDate.getMonth() + delta);
+            const popup = document.getElementById('calendar-popup');
+            renderCalendar(popup.parentElement);
+        }
+
+        function selectCalendarDate(day) {
+            const chosen = new Date(calendarViewDate.getFullYear(), calendarViewDate.getMonth(), day);
+            document.getElementById(currentCalendarField).value = chosen.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+            document.getElementById('calendar-popup').classList.remove('open');
+            currentCalendarField = null;
+        }
+
+        document.addEventListener('click', function(e) {
+            const popup = document.getElementById('calendar-popup');
+            if (!popup) return;
+            if (!popup.contains(e.target) && !e.target.classList.contains('calendar-btn')) {
+                popup.classList.remove('open');
+                currentCalendarField = null;
+            }
+        });
+
+        function printDocument() {
+            // Text and Dropdown fields mapping — Page 1
+            const fields = ['name', 'icNo', 'dob', 'race', 'religion', 'maritalStatus', 'occupation', 'presentAddress', 'phoneNo', 'nokName', 'nokNric', 'nokRelationship', 'nokOccupation', 'nokAddress', 'nokPhoneNo', 'voluntary', 'compulsory', 'previousAdmissions', 'hskRegNumber'];
+            fields.forEach(id => {
+                document.getElementById('out_' + id).innerText = document.getElementById('in_' + id).value;
+            });
+
+            // Radio button mapping for Sex
+            const selectedSex = document.querySelector('input[name="sex_option"]:checked');
+            const sexValue = selectedSex ? selectedSex.value : '';
+            document.getElementById('out_sex').innerText = sexValue;
+
+            // Admission stamp box mapping — Reg. No. is auto-copied from HSK Registration Number
+            const hskRegNumber = document.getElementById('in_hskRegNumber').value;
+            document.getElementById('out_adminRegNo').innerText = hskRegNumber ? hskRegNumber : '.....................................';
+
+            const adminDate = document.getElementById('in_adminDate').value;
+            document.getElementById('out_adminDate').innerText = adminDate ? adminDate : '..........................................';
+
+            const adminTime = document.getElementById('in_adminTime').value;
+            document.getElementById('out_adminTime').innerText = adminTime ? adminTime : '..........................................';
+
+            // Auto-calculate current admission number = previous admissions + 1
+            const previousAdmissionsRaw = document.getElementById('in_previousAdmissions').value;
+            const previousAdmissions = parseInt(previousAdmissionsRaw, 10);
+            const admissionNumberDisplay = isNaN(previousAdmissions) ? '.....................................' : (previousAdmissions + 1);
+            document.getElementById('out_admissionNumber').innerText = admissionNumberDisplay;
+
+            // Show the "1st Visit / New Case" stamp based on the "New Case?" radio button selection
+            const newCaseSelected = document.querySelector('input[name="new_case_option"]:checked');
+            const isNewCase = newCaseSelected && newCaseSelected.value === 'Yes';
+            document.getElementById('out_firstVisitStamp').style.display = isNewCase ? 'block' : 'none';
+
+            // Page 2 (SAMBUNGAN form) — pulled from Name (uppercased) and I/C No.
+            document.getElementById('out_nameUpper').innerText = document.getElementById('in_name').value.toUpperCase();
+            document.getElementById('out_icNoPage2').innerText = document.getElementById('in_icNo').value;
+
+            // Page 3 (Borang Kemasukan Sementara) — pulled from the same fields as Page 1
+            document.getElementById('out3_name').innerText = document.getElementById('in_name').value;
+            document.getElementById('out3_icNo').innerText = document.getElementById('in_icNo').value;
+            document.getElementById('out3_dob').innerText = document.getElementById('in_dob').value;
+            document.getElementById('out3_race').innerText = document.getElementById('in_race').value;
+            document.getElementById('out3_religion').innerText = document.getElementById('in_religion').value;
+            document.getElementById('out3_sex').innerText = sexValue;
+            document.getElementById('out3_occupation').innerText = document.getElementById('in_occupation').value;
+            document.getElementById('out3_maritalStatus').innerText = document.getElementById('in_maritalStatus').value;
+            document.getElementById('out3_presentAddress').innerText = document.getElementById('in_presentAddress').value;
+            document.getElementById('out3_nokName').innerText = document.getElementById('in_nokName').value;
+            document.getElementById('out3_nokNric').innerText = document.getElementById('in_nokNric').value;
+            document.getElementById('out3_nokRelationship').innerText = document.getElementById('in_nokRelationship').value;
+            document.getElementById('out3_nokOccupation').innerText = document.getElementById('in_nokOccupation').value;
+            document.getElementById('out3_nokAddress').innerText = document.getElementById('in_nokAddress').value;
+            document.getElementById('out3_voluntary').innerText = document.getElementById('in_voluntary').value;
+            document.getElementById('out3_compulsory').innerText = document.getElementById('in_compulsory').value;
+            document.getElementById('out3_admissionNumber').innerText = admissionNumberDisplay;
+            document.getElementById('out3_diagnosis').innerText = document.getElementById('in_diagnosis').value;
+
+            // Toggle whether Page 2 (SAMBUNGAN) prints, based on "Planned For Admission?"
+            const plannedAdmission = document.querySelector('input[name="planned_admission_option"]:checked').value;
+            const page2 = document.getElementById('print-area-2');
+            if (plannedAdmission === 'Yes') {
+                page2.classList.remove('hidden-print');
+            } else {
+                page2.classList.add('hidden-print');
+            }
+
+            // Toggle whether Page 3 (Borang Kemasukan Sementara) prints, based on "Print Borang Kemasukan Sementara?"
+            const printBKS = document.querySelector('input[name="print_bks_option"]:checked').value;
+            const page3 = document.getElementById('print-area-3');
+            if (printBKS === 'Yes') {
+                page3.classList.remove('hidden-print');
+            } else {
+                page3.classList.add('hidden-print');
+            }
+
+            // Trigger system printing dialog
+            window.print();
+        }
+
+        // Register Service Worker for PWA functionality
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js');
+        }
+    </script>
+</body>
+</html>
+
+
